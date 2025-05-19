@@ -1,11 +1,27 @@
+[workspace]
+memebers = ["pom*"]
+resolver = "3"
+
+[workspace.dependencies]
+anyhow = "1.0.98"
+clap = { version = "4.5.38", features = [ "derive" ] }
+ratatui = "0.29.0"
+thiserror = "2.0.12"
+tokio = { version = "1.45.0", features = [ "full" ] }
+strum = "0.27.1"
+
 [package]
 name = "pom"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.98"
-clap = { version = "4.5.38", features = [ "derive" ] }
-ratatui = "0.29.0"
-thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = [ "full" ] }
+pom-tui.path = "./pom-tui"
+pom-server.path = "./pom-server"
+
+anyhow.workspace = true
+clap.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+strum.workspace = true
+
