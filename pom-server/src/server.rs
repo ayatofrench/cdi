@@ -6,7 +6,7 @@ use tokio::{
     sync::mpsc::{self, Receiver},
 };
 
-pub struct Process {
+pub struct ProcessMessage {
     pub process_id: i32,
     pub line: String,
     pub stream: String,
@@ -16,7 +16,7 @@ async fn process_handler(
     process_id: i32,
     cmd: String,
     args: Vec<String>,
-    sender: mpsc::Sender<Process>,
+    sender: mpsc::Sender<ProcessMessage>,
 ) {
     // maybe can do something better here need to look into this
     // Also need to look into why command can be chained after new but not with it.
@@ -46,7 +46,7 @@ async fn process_handler(
     tokio::spawn(async move {
         while let Ok(Some(line)) = stdout_reader.next_line().await {
             if sender_stdout
-                .send(Process {
+                .send(ProcessMessage {
                     process_id,
                     line,
                     stream: "stream".to_string(),
@@ -65,7 +65,7 @@ async fn process_handler(
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
             if sender_stderr
-                .send(Process {
+                .send(ProcessMessage {
                     process_id,
                     line,
                     stream: "stream".to_string(),
@@ -80,13 +80,22 @@ async fn process_handler(
     });
 
     match child.wait().await {
-        Ok(status) => println!("Process {} exited with status: {}", cmd, status),
+        Ok(status) => {
+            let exit_msg = format!("Process {} exited with status: {}", cmd, status);
+            let _ = sender
+                .send(ProcessMessage {
+                    process_id,
+                    line: exit_msg.to_string(),
+                    stream: "stream".to_string(),
+                })
+                .await;
+        }
         Err(e) => todo!(),
     }
 }
 
-pub fn start(commands: Vec<(String, Vec<String>)>) -> anyhow::Result<Receiver<Process>> {
-    let (sender, mut reciever) = mpsc::channel(100);
+pub fn start(commands: Vec<(String, Vec<String>)>) -> anyhow::Result<Receiver<ProcessMessage>> {
+    let (sender, reciever) = mpsc::channel(100);
     for (idx, value) in commands.iter().enumerate() {
         let (cmd, args) = value.to_owned();
         tokio::spawn(process_handler(

@@ -1,8 +1,10 @@
 use anyhow;
+use pom_server::ProcessMessage;
+use tokio::sync::mpsc::Receiver;
 
 pub mod app;
 
 #[doc(hidden)]
-pub fn start(process_state: &Vec<Vec<String>>) -> anyhow::Result<()> {
-    app::start(process_state)
+pub async fn run(conn: Receiver<ProcessMessage>) -> anyhow::Result<()> {
+    app::run(conn).await
 }
