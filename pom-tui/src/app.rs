@@ -4,13 +4,16 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Layout, Rect},
+    style::{Modifier, Style, palette::tailwind::SLATE},
     text::{Line, Text},
-    widgets::Widget,
+    widgets::{HighlightSpacing, List, ListState, StatefulWidget, Tabs, Widget},
 };
 use std::time::Duration;
 use tokio::sync::mpsc::Receiver;
 
 use pom_server::ProcessMessage;
+
+const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
 pub async fn run(conn: Receiver<ProcessMessage>) -> Result<()> {
     let terminal = ratatui::init();
@@ -18,6 +21,7 @@ pub async fn run(conn: Receiver<ProcessMessage>) -> Result<()> {
         state: AppState::default(),
         conn,
         process_tabs: ProcessTabs::default(),
+        list_state: ListState::default().with_selected(Some(0)),
     };
     for _ in 0..2 {
         app.process_tabs.data.push(vec![]);
@@ -53,6 +57,7 @@ struct App {
     state: AppState,
     conn: Receiver<ProcessMessage>,
     process_tabs: ProcessTabs,
+    list_state: ListState,
 }
 
 impl App {
@@ -62,7 +67,7 @@ impl App {
                 let process_id: usize = output.process_id.try_into()?;
                 self.process_tabs.data[process_id].push(output.line.clone());
             }
-            terminal.draw(|frame| frame.render_widget(&self, frame.area()))?;
+            terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             self.handle_events()?;
         }
 
@@ -92,42 +97,58 @@ impl App {
     }
 
     pub fn next_tab(&mut self) {
-        if self.process_tabs.selected < self.process_tabs.data.len() - 1 {
-            self.process_tabs.selected = self.process_tabs.selected + 1;
-        }
+        self.list_state.select_next();
+        // if self.process_tabs.selected < self.process_tabs.data.len() - 1 {
+        //     self.process_tabs.selected = self.process_tabs.selected + 1;
+        // }
     }
 
     pub fn prev_tab(&mut self) {
-        if self.process_tabs.selected > 0 {
-            self.process_tabs.selected = self.process_tabs.selected - 1;
-        }
+        self.list_state.select_previous();
+        // if self.process_tabs.selected > 0 {
+        //     self.process_tabs.selected = self.process_tabs.selected - 1;
+        // }
+    }
+
+    fn render_tabs(&mut self, area: Rect, buf: &mut Buffer) {
+        let titles = self.process_tabs.data.iter().map(|_| "1");
+
+        let list = List::new(titles)
+            // .select(self.process_tabs.selected)
+            .highlight_style(SELECTED_STYLE)
+            .highlight_symbol(">")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        StatefulWidget::render(list, area, buf, &mut self.list_state)
+    }
+
+    fn render_selected_process_tab(&self, area: Rect, buf: &mut Buffer) {
+        // I know there is a better way than this but okay for now....
+        let selected = if let Some(i) = self.list_state.selected() {
+            i
+        } else {
+            0
+        };
+        let lines: Vec<Line> = self.process_tabs.data[selected]
+            .iter()
+            .map(|line| Line::from(line.clone()))
+            .collect();
+        let text = Text::from(lines);
+
+        text.render(area, buf);
     }
 }
 
-impl Widget for &App {
+impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         use Constraint::{Length, Min};
-        let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
-        let [header_area, inner_area, footer_area] = vertical.areas(area);
+        let vertical = Layout::vertical([Min(0), Length(1)]);
+        let [inner_area, footer_area] = vertical.areas(area);
 
-        let horizontal = Layout::horizontal([Min(0), Length(20)]);
-        let [tabs_area, title_area] = horizontal.areas(header_area);
+        let horizontal = Layout::horizontal([Length(20), Min(0)]);
+        let [tabs_area, output_area] = horizontal.areas(inner_area);
 
-        render_title(title_area, buf);
-        render_selected_process_tab(self, inner_area, buf);
+        self.render_tabs(tabs_area, buf);
+        self.render_selected_process_tab(output_area, buf);
     }
-}
-
-fn render_selected_process_tab(app: &App, area: Rect, buf: &mut Buffer) {
-    let lines: Vec<Line> = app.process_tabs.data[app.process_tabs.selected]
-        .iter()
-        .map(|line| Line::from(line.clone()))
-        .collect();
-    let text = Text::from(lines);
-
-    text.render(area, buf);
-}
-
-fn render_title(area: Rect, buf: &mut Buffer) {
-    "Ratatui Tabs Example".render(area, buf);
 }
