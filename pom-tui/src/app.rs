@@ -123,13 +123,10 @@ impl App {
     }
 
     fn render_selected_process_tab(&self, area: Rect, buf: &mut Buffer) {
-        // I know there is a better way than this but okay for now....
-        let selected = if let Some(i) = self.list_state.selected() {
-            i
-        } else {
-            0
-        };
-        let lines: Vec<Line> = self.process_tabs.data[selected]
+        let selected = self.list_state.selected().unwrap_or(0);
+        let lines: Vec<Line> = self.process_tabs.data[selected].as_slice()
+            [self.process_tabs.data.len().saturating_sub(100)..]
+            .to_vec()
             .iter()
             .map(|line| Line::from(line.clone()))
             .collect();

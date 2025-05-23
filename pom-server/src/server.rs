@@ -3,13 +3,16 @@ use std::process::Stdio;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
-    sync::mpsc::{self, Receiver},
+    select,
+    sync::{
+        mpsc::{self, Receiver},
+        oneshot,
+    },
 };
 
 pub struct ProcessMessage {
     pub process_id: i32,
     pub line: String,
-    pub stream: String,
 }
 
 async fn process_handler(
@@ -17,6 +20,7 @@ async fn process_handler(
     cmd: String,
     args: Vec<String>,
     sender: mpsc::Sender<ProcessMessage>,
+    mut kill_signal: oneshot::Receiver<()>,
 ) {
     // maybe can do something better here need to look into this
     // Also need to look into why command can be chained after new but not with it.
@@ -46,11 +50,7 @@ async fn process_handler(
     tokio::spawn(async move {
         while let Ok(Some(line)) = stdout_reader.next_line().await {
             if sender_stdout
-                .send(ProcessMessage {
-                    process_id,
-                    line,
-                    stream: "stream".to_string(),
-                })
+                .send(ProcessMessage { process_id, line })
                 .await
                 .is_err()
             {
@@ -65,11 +65,7 @@ async fn process_handler(
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
             if sender_stderr
-                .send(ProcessMessage {
-                    process_id,
-                    line,
-                    stream: "stream".to_string(),
-                })
+                .send(ProcessMessage { process_id, line })
                 .await
                 .is_err()
             {
@@ -79,30 +75,59 @@ async fn process_handler(
         }
     });
 
-    match child.wait().await {
-        Ok(status) => {
-            let exit_msg = format!("Process {} exited with status: {}", cmd, status);
-            let _ = sender
-                .send(ProcessMessage {
-                    process_id,
-                    line: exit_msg.to_string(),
-                    stream: "stream".to_string(),
-                })
-                .await;
+    // kill_signal.is_terminated
+    kill_signal.await
+
+    loop {
+        select! {
+            biased;
+
+
+            // _ = &mut kill_signal => {
+            //     match child.kill().await {
+            //         Ok(_) => {
+            //             println!("Process {} exited with status", cmd);
+            //             return;
+            //         },
+            //         Err(_) => todo!()
+            //
+            //     }
+            //
+            // }
+
+            result = child.wait() => {
+                match result {
+                    Ok(status) => {
+                        let exit_msg = format!("Process {} exited with status: {}", cmd, status);
+                        let _ = sender
+                            .send(ProcessMessage {
+                                process_id,
+                                line: exit_msg.to_string(),
+                            })
+                            .await;
+
+                        return;
+                    },
+                    Err(_e) => todo!(),
+                    }
+            }
+
         }
-        Err(e) => todo!(),
     }
 }
 
 pub fn start(commands: Vec<(String, Vec<String>)>) -> anyhow::Result<Receiver<ProcessMessage>> {
     let (sender, reciever) = mpsc::channel(100);
+
     for (idx, value) in commands.iter().enumerate() {
+        let (_kill_sender, kill_receiver) = oneshot::channel::<()>();
         let (cmd, args) = value.to_owned();
         tokio::spawn(process_handler(
             idx.try_into().unwrap(),
             cmd,
             args,
             sender.clone(),
+            kill_receiver,
         ));
     }
 
