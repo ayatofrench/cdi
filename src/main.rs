@@ -1,3 +1,4 @@
+use pom_config as config;
 use pom_server as server;
 use pom_tui as tui;
 

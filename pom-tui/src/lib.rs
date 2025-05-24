@@ -1,10 +1,9 @@
 use anyhow;
-use pom_server::ProcessMessage;
-use tokio::sync::mpsc::Receiver;
+use pom_server::Connection;
 
 pub mod app;
 
 #[doc(hidden)]
-pub async fn run(conn: Receiver<ProcessMessage>) -> anyhow::Result<()> {
+pub async fn run(conn: Connection) -> anyhow::Result<()> {
     app::run(conn).await
 }

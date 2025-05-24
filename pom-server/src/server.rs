@@ -1,26 +1,39 @@
 use anyhow;
-use std::process::Stdio;
+use std::{collections::HashMap, process::Stdio};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
     select,
-    sync::{
-        mpsc::{self, Receiver},
-        oneshot,
-    },
+    sync::mpsc::{self, Receiver, Sender},
+    task::JoinHandle,
 };
 
-pub struct ProcessMessage {
-    pub process_id: i32,
-    pub line: String,
+pub struct Connection {
+    pub sender: Sender<Message>,
+    pub receiver: Receiver<Message>,
+}
+
+pub enum ServerCommand {
+    Shutdown,
+}
+
+pub enum Message {
+    Command(ServerCommand),
+    ProcessOutput { process_id: usize, line: String },
+}
+
+struct ProcessMetadata {
+    id: usize,
+    conn: Connection,
+    handle: JoinHandle<()>,
 }
 
 async fn process_handler(
-    process_id: i32,
+    process_id: usize,
     cmd: String,
     args: Vec<String>,
-    sender: mpsc::Sender<ProcessMessage>,
-    mut kill_signal: oneshot::Receiver<()>,
+    sender: mpsc::Sender<Message>,
+    mut conn: Connection,
 ) {
     // maybe can do something better here need to look into this
     // Also need to look into why command can be chained after new but not with it.
@@ -50,7 +63,7 @@ async fn process_handler(
     tokio::spawn(async move {
         while let Ok(Some(line)) = stdout_reader.next_line().await {
             if sender_stdout
-                .send(ProcessMessage { process_id, line })
+                .send(Message::ProcessOutput { process_id, line })
                 .await
                 .is_err()
             {
@@ -65,7 +78,7 @@ async fn process_handler(
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
             if sender_stderr
-                .send(ProcessMessage { process_id, line })
+                .send(Message::ProcessOutput { process_id, line })
                 .await
                 .is_err()
             {
@@ -76,31 +89,36 @@ async fn process_handler(
     });
 
     // kill_signal.is_terminated
-    kill_signal.await
+    // kill_signal.await
 
     loop {
         select! {
             biased;
 
 
-            // _ = &mut kill_signal => {
-            //     match child.kill().await {
-            //         Ok(_) => {
-            //             println!("Process {} exited with status", cmd);
-            //             return;
-            //         },
-            //         Err(_) => todo!()
-            //
-            //     }
-            //
-            // }
+            Some(msg) = conn.receiver.recv() => {
+                match msg {
+                    Message::Command(c) => match c {
+                        ServerCommand::Shutdown => match child.kill().await {
+                            Ok(_) => {
+                                println!("Process {} exited with status", cmd);
+                                return;
+                            },
+                            Err(_) => todo!()
+                        }
+
+                    }
+                    _ => todo!()
+                }
+
+            }
 
             result = child.wait() => {
                 match result {
                     Ok(status) => {
                         let exit_msg = format!("Process {} exited with status: {}", cmd, status);
                         let _ = sender
-                            .send(ProcessMessage {
+                            .send(Message::ProcessOutput {
                                 process_id,
                                 line: exit_msg.to_string(),
                             })
@@ -116,21 +134,69 @@ async fn process_handler(
     }
 }
 
-pub fn start(commands: Vec<(String, Vec<String>)>) -> anyhow::Result<Receiver<ProcessMessage>> {
-    let (sender, reciever) = mpsc::channel(100);
-
+async fn supervisor(commands: Vec<(String, Vec<String>)>, mut server_conn: Connection) {
+    let mut processes: Vec<ProcessMetadata> = Vec::with_capacity(commands.len());
     for (idx, value) in commands.iter().enumerate() {
-        let (_kill_sender, kill_receiver) = oneshot::channel::<()>();
+        let (supervisor_sender, process_receiver) = mpsc::channel::<Message>(1);
+        let (process_sender, supervisor_receiver) = mpsc::channel::<Message>(1);
+
         let (cmd, args) = value.to_owned();
-        tokio::spawn(process_handler(
-            idx.try_into().unwrap(),
+        let task = tokio::spawn(process_handler(
+            idx,
             cmd,
             args,
-            sender.clone(),
-            kill_receiver,
+            server_conn.sender.clone(),
+            Connection {
+                sender: process_sender,
+                receiver: process_receiver,
+            },
         ));
+
+        processes.push(ProcessMetadata {
+            id: idx,
+            conn: Connection {
+                sender: supervisor_sender,
+                receiver: supervisor_receiver,
+            },
+            handle: task,
+        })
     }
 
-    drop(sender);
-    Ok(reciever)
+    while let Some(msg) = server_conn.receiver.recv().await {
+        match msg {
+            Message::Command(cmd) => match cmd {
+                ServerCommand::Shutdown => {
+                    for proc in processes.iter() {
+                        let _ = proc
+                            .conn
+                            .sender
+                            .send(Message::Command(ServerCommand::Shutdown))
+                            .await;
+                    }
+
+                    return;
+                }
+            },
+            _ => todo!(),
+        }
+    }
+}
+
+pub fn start(commands: Vec<(String, Vec<String>)>) -> anyhow::Result<Connection> {
+    let (server_sender, client_receiver) = mpsc::channel::<Message>(100);
+    let (client_sender, server_receiver) = mpsc::channel::<Message>(1);
+
+    tokio::spawn(supervisor(
+        commands,
+        Connection {
+            sender: server_sender.clone(),
+            receiver: server_receiver,
+        },
+    ));
+
+    drop(server_sender);
+    Ok(Connection {
+        sender: client_sender,
+        receiver: client_receiver,
+    })
 }

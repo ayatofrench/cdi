@@ -9,13 +9,12 @@ use ratatui::{
     widgets::{HighlightSpacing, List, ListState, StatefulWidget, Tabs, Widget},
 };
 use std::time::Duration;
-use tokio::sync::mpsc::Receiver;
 
-use pom_server::ProcessMessage;
+use pom_server::{Connection, server::Message};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
-pub async fn run(conn: Receiver<ProcessMessage>) -> Result<()> {
+pub async fn run(conn: Connection) -> Result<()> {
     let terminal = ratatui::init();
     let mut app = App {
         state: AppState::default(),
@@ -55,7 +54,7 @@ impl Default for ProcessTabs {
 
 struct App {
     state: AppState,
-    conn: Receiver<ProcessMessage>,
+    conn: Connection,
     process_tabs: ProcessTabs,
     list_state: ListState,
 }
@@ -63,13 +62,24 @@ struct App {
 impl App {
     async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         while self.state == AppState::Running {
-            while let Ok(output) = self.conn.try_recv() {
-                let process_id: usize = output.process_id.try_into()?;
-                self.process_tabs.data[process_id].push(output.line.clone());
+            while let Ok(msg) = self.conn.receiver.try_recv() {
+                match msg {
+                    Message::ProcessOutput { process_id, line } => {
+                        self.process_tabs.data[process_id].push(line.clone());
+                    }
+                    _ => {}
+                }
             }
             terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             self.handle_events()?;
         }
+
+        self.conn
+            .sender
+            .send(Message::Command(
+                pom_server::server::ServerCommand::Shutdown,
+            ))
+            .await?;
 
         Ok(())
     }
