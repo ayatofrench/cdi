@@ -1,0 +1,4 @@
+service {
+  name "test service"
+  cmd "pnpm dev"
+}

@@ -108,16 +108,10 @@ impl App {
 
     pub fn next_tab(&mut self) {
         self.list_state.select_next();
-        // if self.process_tabs.selected < self.process_tabs.data.len() - 1 {
-        //     self.process_tabs.selected = self.process_tabs.selected + 1;
-        // }
     }
 
     pub fn prev_tab(&mut self) {
         self.list_state.select_previous();
-        // if self.process_tabs.selected > 0 {
-        //     self.process_tabs.selected = self.process_tabs.selected - 1;
-        // }
     }
 
     fn render_tabs(&mut self, area: Rect, buf: &mut Buffer) {

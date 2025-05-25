@@ -10,8 +10,10 @@ pub struct Config {
 pub struct Service {
     #[knus(child, unwrap(argument), default)]
     pub cmd: String,
-    // #[knus(unwrap(property))]
-    // dir: Option<String>,
+    #[knus(child, unwrap(argument), default)]
+    pub name: String,
+    #[knus(unwrap(property))]
+    cwd: Option<String>,
 }
 
 impl Config {
@@ -37,6 +39,11 @@ mod tests {
         let parsed = do_parse(
             r##"
             service {
+                name "api"
+                cmd "pnpm dev"
+            }
+            service {
+                name "web"
                 cmd "pnpm dev"
             }
             "##,

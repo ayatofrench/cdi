@@ -1,5 +1,5 @@
 use anyhow;
-use std::{collections::HashMap, process::Stdio};
+use std::process::Stdio;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -101,7 +101,7 @@ async fn process_handler(
                     Message::Command(c) => match c {
                         ServerCommand::Shutdown => match child.kill().await {
                             Ok(_) => {
-                                println!("Process {} exited with status", cmd);
+                                println!("Process {} killed with status", cmd);
                                 return;
                             },
                             Err(_) => todo!()
