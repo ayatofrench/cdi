@@ -61,6 +61,7 @@ fn split_command_into_parts(input: &str) -> Option<(String, Vec<String>)> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut commands_to_run = Vec::new();
+    let mut services = Vec::new();
     let data = get_config()?;
     let cfg = config::Config::parse(".pom.kdl", &data)?;
 
@@ -68,10 +69,11 @@ async fn main() -> anyhow::Result<()> {
         if let Some(command) = split_command_into_parts(service.cmd.as_str()) {
             commands_to_run.push(command);
         }
+        services.push(service.name.clone());
     }
 
     let conn = server::start(commands_to_run).unwrap();
-    let _ = tui::run(conn).await;
+    let _ = tui::run(conn, services).await;
 
     Ok(())
 }

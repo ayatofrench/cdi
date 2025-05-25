@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, palette::tailwind::SLATE},
     text::{Line, Text},
-    widgets::{HighlightSpacing, List, ListState, StatefulWidget, Tabs, Widget},
+    widgets::{HighlightSpacing, List, ListState, StatefulWidget, Widget},
 };
 use std::time::Duration;
 
@@ -14,16 +14,19 @@ use pom_server::{Connection, server::Message};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
-pub async fn run(conn: Connection) -> Result<()> {
+pub async fn run(conn: Connection, services: Vec<String>) -> Result<()> {
     let terminal = ratatui::init();
     let mut app = App {
         state: AppState::default(),
         conn,
-        process_tabs: ProcessTabs::default(),
+        process_tab_group: ProcessTabGroup::default(),
         list_state: ListState::default().with_selected(Some(0)),
     };
-    for _ in 0..2 {
-        app.process_tabs.data.push(vec![]);
+    for service in services {
+        app.process_tab_group.tabs.push(ProcessTab {
+            name: service,
+            data: vec![],
+        })
     }
     let app_result = app.run(terminal).await;
 
@@ -38,16 +41,30 @@ enum AppState {
     Quitting,
 }
 
-struct ProcessTabs {
-    selected: usize,
-    data: Vec<Vec<String>>,
+struct ProcessTab {
+    name: String,
+    data: Vec<String>,
 }
 
-impl Default for ProcessTabs {
+impl Default for ProcessTab {
     fn default() -> Self {
         Self {
-            selected: 0,
-            data: Vec::new(),
+            data: vec![],
+            name: String::default(),
+        }
+    }
+}
+
+struct ProcessTabGroup {
+    // selected: usize,
+    tabs: Vec<ProcessTab>,
+}
+
+impl Default for ProcessTabGroup {
+    fn default() -> Self {
+        Self {
+            // selected: 0,
+            tabs: Vec::new(),
         }
     }
 }
@@ -55,7 +72,7 @@ impl Default for ProcessTabs {
 struct App {
     state: AppState,
     conn: Connection,
-    process_tabs: ProcessTabs,
+    process_tab_group: ProcessTabGroup,
     list_state: ListState,
 }
 
@@ -65,7 +82,8 @@ impl App {
             while let Ok(msg) = self.conn.receiver.try_recv() {
                 match msg {
                     Message::ProcessOutput { process_id, line } => {
-                        self.process_tabs.data[process_id].push(line.clone());
+                        let tab = &mut self.process_tab_group.tabs[process_id];
+                        tab.data.push(line.clone());
                     }
                     _ => {}
                 }
@@ -115,7 +133,11 @@ impl App {
     }
 
     fn render_tabs(&mut self, area: Rect, buf: &mut Buffer) {
-        let titles = self.process_tabs.data.iter().map(|_| "1");
+        let titles = self
+            .process_tab_group
+            .tabs
+            .iter()
+            .map(|tab| tab.name.clone());
 
         let list = List::new(titles)
             // .select(self.process_tabs.selected)
@@ -128,8 +150,8 @@ impl App {
 
     fn render_selected_process_tab(&self, area: Rect, buf: &mut Buffer) {
         let selected = self.list_state.selected().unwrap_or(0);
-        let lines: Vec<Line> = self.process_tabs.data[selected].as_slice()
-            [self.process_tabs.data.len().saturating_sub(100)..]
+        let tab = &self.process_tab_group.tabs[selected];
+        let lines: Vec<Line> = tab.data.as_slice()[tab.data.len().saturating_sub(100)..]
             .to_vec()
             .iter()
             .map(|line| Line::from(line.clone()))
