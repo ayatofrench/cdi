@@ -597,6 +597,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "miette",
  "pom-config",
  "pom-server",
  "pom-tui",
@@ -620,6 +621,7 @@ name = "pom-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "pom-config",
  "thiserror",
  "tokio",
 ]

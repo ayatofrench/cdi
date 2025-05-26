@@ -27,4 +27,5 @@ clap.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 strum.workspace = true
+miette.workspace = true
 
