@@ -4,15 +4,20 @@ use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Layout, Rect},
-    style::{Modifier, Style, palette::tailwind::SLATE},
+    style::{
+        self, Modifier, Style,
+        palette::tailwind::{SLATE, YELLOW},
+    },
     text::{Line, Text},
-    widgets::{HighlightSpacing, List, ListState, StatefulWidget, Widget},
+    widgets::{
+        Block, Borders, HighlightSpacing, List, ListState, Paragraph, StatefulWidget, Widget,
+    },
 };
 use std::time::Duration;
 
 use pom_server::{Connection, server::Message};
 
-const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
+const SELECTED_STYLE: Style = Style::new().fg(YELLOW.c600).add_modifier(Modifier::BOLD);
 
 pub async fn run(conn: Connection, services: Vec<String>) -> Result<()> {
     let terminal = ratatui::init();
@@ -140,25 +145,33 @@ impl App {
             .map(|tab| tab.name.clone());
 
         let list = List::new(titles)
-            // .select(self.process_tabs.selected)
             .highlight_style(SELECTED_STYLE)
-            .highlight_symbol(">")
-            .highlight_spacing(HighlightSpacing::Always);
+            .highlight_symbol("> ")
+            .highlight_spacing(HighlightSpacing::Always)
+            .block(Block::new().borders(Borders::RIGHT));
 
         StatefulWidget::render(list, area, buf, &mut self.list_state)
     }
 
     fn render_selected_process_tab(&self, area: Rect, buf: &mut Buffer) {
+        // TODO: Need to make this more robust. This doesn't account for wrapping lines yet.
         let selected = self.list_state.selected().unwrap_or(0);
         let tab = &self.process_tab_group.tabs[selected];
-        let lines: Vec<Line> = tab.data.as_slice()[tab.data.len().saturating_sub(100)..]
-            .to_vec()
+        let lines: Vec<Line> = tab
+            .data
             .iter()
             .map(|line| Line::from(line.clone()))
             .collect();
-        let text = Text::from(lines);
 
-        text.render(area, buf);
+        let vertical_offset: u16 = lines
+            .len()
+            .saturating_sub(area.rows().count())
+            .try_into()
+            .unwrap_or(0);
+        let text = Text::from(lines);
+        Paragraph::new(text)
+            .scroll((vertical_offset, 0))
+            .render(area, buf)
     }
 }
 
@@ -166,7 +179,7 @@ impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         use Constraint::{Length, Min};
         let vertical = Layout::vertical([Min(0), Length(1)]);
-        let [inner_area, footer_area] = vertical.areas(area);
+        let [inner_area, _footer_area] = vertical.areas(area);
 
         let horizontal = Layout::horizontal([Length(20), Min(0)]);
         let [tabs_area, output_area] = horizontal.areas(inner_area);
