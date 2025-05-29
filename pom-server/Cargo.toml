@@ -5,8 +5,10 @@ edition = "2024"
 
 [dependencies]
 pom-config.path = "../pom-config/"
+pom-shared.path = "../pom-shared/"
 
 anyhow.workspace = true
+libc.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 

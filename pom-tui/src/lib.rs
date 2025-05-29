@@ -2,6 +2,7 @@ use anyhow;
 use pom_server::Connection;
 
 pub mod app;
+mod signals;
 
 #[doc(hidden)]
 pub async fn run(conn: Connection, services: Vec<String>) -> anyhow::Result<()> {

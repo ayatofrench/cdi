@@ -3,14 +3,18 @@ memebers = ["pom*"]
 resolver = "3"
 
 [workspace.dependencies]
+ansi-to-tui = "7.0.0"
 anyhow = "1.0.98"
 clap = { version = "4.5.38", features = [ "derive" ] }
-ratatui = "0.29.0"
-thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = [ "full" ] }
-strum = "0.27.1"
+crossterm = { version = "0.29.0", features = [ "event-stream" ] }
+futures = "0.3.31"
 knus = "3.3.1"
 miette = { version="7.2.0", features=["fancy"] }
+ratatui = "0.29.0"
+strum = "0.27.1"
+thiserror = "2.0.12"
+tokio = { version = "1.45.0", features = [ "full" ] }
+libc = "0.2.172"
 
 [package]
 name = "pom"
@@ -21,6 +25,7 @@ edition = "2024"
 pom-tui.path = "./pom-tui"
 pom-server.path = "./pom-server"
 pom-config.path = "./pom-config/"
+pom-shared.path = "./pom-shared/"
 
 anyhow.workspace = true
 clap.workspace = true

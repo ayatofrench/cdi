@@ -1,11 +1,10 @@
 [package]
-name = "pom-tui"
+name = "pom-shared"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pom-server.path = "../pom-server"
-pom-shared.path = "../pom-shared/"
+# pom-server.path = "../pom-server"
 
 ansi-to-tui.workspace = true
 anyhow.workspace = true
