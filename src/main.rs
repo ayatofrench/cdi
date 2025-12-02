@@ -25,11 +25,13 @@ async fn main() -> miette::Result<()> {
     //     services.push(service.name.clone());
     // }
 
-    let process_infos: Vec<ProcessInfo> = cfg.services.iter()
-        .map(|s| ProcessInfo::new(s.name.cloen(), s.cmd.clone(), s.cwd.clone()))
+    let process_infos: Vec<ProcessInfo> = cfg
+        .services
+        .iter()
+        .map(|s| ProcessInfo::new(s.name.clone(), s.cmd.clone(), s.cwd.clone()))
         .collect();
 
-    let conn = server::serve(process_infos).unwrap();
+    let conn = server::serve(process_infos.clone()).unwrap();
     let _ = tui::run(conn, process_infos).await;
 
     Ok(())

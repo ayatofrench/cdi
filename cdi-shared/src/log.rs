@@ -9,14 +9,14 @@ pub struct LogLine {
     pub id: u64,
     pub process_id: u64,
     pub session_id: u64,
-    pub timestamp: u64,
+    pub timestamp: u128,
     pub stream: Stream,
     pub content: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProcessStatus {
-    Running, 
+    Running,
     Stopped,
     Crashed,
 }
@@ -48,9 +48,9 @@ impl ProcessInfo {
     }
 
     fn compute_id(name: &str, command: &str, cwd: Option<&str>) -> u64 {
-        use std::hash::{Hash, Hasher};
         use std::collections::hash_map::DefaultHasher;
-        
+        use std::hash::{Hash, Hasher};
+
         let mut hasher = DefaultHasher::new();
         name.hash(&mut hasher);
         command.hash(&mut hasher);
@@ -58,7 +58,6 @@ impl ProcessInfo {
         hasher.finish()
     }
 }
-
 
 #[derive(Clone, Debug)]
 pub struct SessionInfo {

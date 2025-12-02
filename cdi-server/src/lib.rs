@@ -5,6 +5,7 @@ use cdi_shared::log::ProcessInfo;
 pub use server::Connection;
 
 mod process;
+mod store;
 mod supervisor;
 mod utils;
 

@@ -1,15 +1,23 @@
 use tokio::sync::mpsc;
 
+use crate::log::{ProcessStatus, Stream};
 use crate::ro_cell::RoCell;
-use crate::log::Stream;
 
 static STORE_TX: RoCell<mpsc::UnboundedSender<StoreEvent>> = RoCell::new();
 static STORE_RX: RoCell<mpsc::UnboundedReceiver<StoreEvent>> = RoCell::new();
 
 #[derive(Clone, Debug)]
 pub enum StoreEvent {
-    AppendLog {process_id: u64, stream: Stream, content: String},
-    ProcessExited {process_id: u64, status: String, exit_code: Option<i32>}
+    AppendLog {
+        process_id: u64,
+        stream: Stream,
+        content: String,
+    },
+    ProcessExited {
+        process_id: u64,
+        status: ProcessStatus,
+        exit_code: Option<i32>,
+    },
 }
 
 impl StoreEvent {

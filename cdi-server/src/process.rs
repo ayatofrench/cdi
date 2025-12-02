@@ -1,9 +1,11 @@
 use std::process::Stdio;
 
 use anyhow::Result;
+use cdi_shared::{
+    event::{store::StoreEvent, ui::TuiEvent},
+    log::{ProcessInfo, ProcessStatus},
+};
 use libc::pid_t;
-use cdi_config::Service;
-use cdi_shared::{event::{store::StoreEvent, ui::TuiEvent}, log::ProcessInfo};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, Command},
@@ -19,20 +21,14 @@ use crate::{
 };
 
 pub(super) struct Process {
-    info: ProcessInfo
-    sender: mpsc::Sender<Message>,
+    info: ProcessInfo,
     conn: Connection,
 }
 
 impl Process {
-    pub fn start(
-        process_info: ProcessInfo,
-        sender: mpsc::Sender<Message>,
-        conn: Connection,
-    ) -> Result<JoinHandle<()>> {
+    pub fn start(process_info: ProcessInfo, conn: Connection) -> Result<JoinHandle<()>> {
         let process = Self {
             info: process_info,
-            sender,
             conn,
         };
         let task = tokio::spawn(process.run());
@@ -118,7 +114,17 @@ impl Process {
                         match result {
                             Ok(status) => {
                                 let exit_msg = format!("Process {} exited with status: {}", cmd, status);
-                                StoreEvent::AppendLog {process_id: self.info.id, content: exit_msg.to_string(), stream: cdi_shared::log::Stream::Stdout,}.emit();
+                                StoreEvent::AppendLog {
+                                    process_id: self.info.id,
+                                    content: exit_msg.to_string(),
+                                    stream: cdi_shared::log::Stream::Stdout
+                                }.emit();
+
+                                StoreEvent::ProcessExited {
+                                    process_id: self.info.id,
+                                    status: ProcessStatus::Stopped,  // or Crashed based on exit code
+                                    exit_code: status.code(),
+                                }.emit();
 
                                 return;
                             },

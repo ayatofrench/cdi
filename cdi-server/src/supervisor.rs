@@ -9,7 +9,6 @@ use crate::{
 };
 
 pub(super) struct Supervisor {
-    processes: Vec<ProcessContext>,
     server_conn: Connection,
 }
 
@@ -20,66 +19,39 @@ struct ProcessContext {
 }
 
 impl Supervisor {
-    pub fn start(services: Vec<ProcessInfo>, server_conn: Connection) -> Result<()> {
-        let supervisor = Self {
-            processes: Vec::with_capacity(services.len()),
-            server_conn,
-        };
-
-        let _ = tokio::spawn(supervisor.run(services));
+    pub fn start(process_infos: Vec<ProcessInfo>, server_conn: Connection) -> Result<()> {
+        let supervisor = Self { server_conn };
+        let _ = tokio::spawn(supervisor.run(process_infos));
 
         Ok(())
     }
 
     async fn run(mut self, process_infos: Vec<ProcessInfo>) -> Result<()> {
-        // let mut processes: Vec<ProcessContext> = Vec::with_capacity(process_infos.len());
-        let processes: Vec<ProcessContext> = process_infos.iter().map(|proc_info| {
-            let (supervisor_sender, process_receiver) = mpsc::channel::<Message>(1);
-            let (process_sender, supervisor_receiver) = mpsc::channel::<Message>(1);
+        let processes: Vec<ProcessContext> = process_infos
+            .iter()
+            .map(|proc_info| {
+                let (supervisor_sender, process_receiver) = mpsc::channel::<Message>(1);
+                let (process_sender, supervisor_receiver) = mpsc::channel::<Message>(1);
 
-            let task = Process::start(
-                proc_info.clone(),
-                self.server_conn.sender.clone(),
-                Connection {
-                    sender: process_sender,
-                    receiver: process_receiver,
-                },
-            ).unwrap();
+                let task = Process::start(
+                    proc_info.clone(),
+                    Connection {
+                        sender: process_sender,
+                        receiver: process_receiver,
+                    },
+                )
+                .unwrap();
 
-            ProcessContext {
-                info: proc_info.clone(),
-                conn: Connection {
-                    sender: supervisor_sender,
-                    receiver: supervisor_receiver,
-                },
-                handle: task,
-            }
-
-        }).collect();
-        //
-        // for (idx, service) in processes.iter().enumerate() {
-        //     let (supervisor_sender, process_receiver) = mpsc::channel::<Message>(1);
-        //     let (process_sender, supervisor_receiver) = mpsc::channel::<Message>(1);
-        //
-        //     let task = Process::start(
-        //         idx,
-        //         service.clone(),
-        //         self.server_conn.sender.clone(),
-        //         Connection {
-        //             sender: process_sender,
-        //             receiver: process_receiver,
-        //         },
-        //     )?;
-        //
-        //     processes.push(ProcessContext {
-        //         id: idx,
-        //         conn: Connection {
-        //             sender: supervisor_sender,
-        //             receiver: supervisor_receiver,
-        //         },
-        //         handle: task,
-        //     })
-        // }
+                ProcessContext {
+                    info: proc_info.clone(),
+                    conn: Connection {
+                        sender: supervisor_sender,
+                        receiver: supervisor_receiver,
+                    },
+                    handle: task,
+                }
+            })
+            .collect();
 
         while let Some(msg) = self.server_conn.receiver.recv().await {
             match msg {
