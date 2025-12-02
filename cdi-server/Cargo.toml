@@ -1,11 +1,11 @@
 [package]
-name = "pom-server"
+name = "cdi-server"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pom-config.path = "../pom-config/"
-pom-shared.path = "../pom-shared/"
+cdi-config.path = "../cdi-config/"
+cdi-shared.path = "../cdi-shared/"
 
 anyhow.workspace = true
 libc.workspace = true

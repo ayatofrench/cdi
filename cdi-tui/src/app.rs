@@ -11,10 +11,7 @@ use ratatui::{
     },
     layout::{Constraint, Layout, Rect},
     prelude::CrosstermBackend,
-    style::{
-        self, Modifier, Style,
-        palette::tailwind::{SLATE, YELLOW},
-    },
+    style::{ self, Modifier, Style, palette::tailwind::{SLATE, YELLOW}, },
     text::{Line, Text},
     widgets::{
         Block, Borders, HighlightSpacing, List, ListState, Paragraph, StatefulWidget, Widget, Wrap,
@@ -25,8 +22,8 @@ use std::time::Duration;
 use tokio::time;
 
 use crate::signals::{self, Signals};
-use pom_server::{Connection, server::Message};
-use pom_shared::event::Event as PomEvent;
+use cdi_server::{Connection, server::Message};
+use cdi_shared::event::ui::TuiEvent;
 
 const SELECTED_STYLE: Style = Style::new().fg(YELLOW.c600).add_modifier(Modifier::BOLD);
 
@@ -66,7 +63,7 @@ pub async fn run(conn: Connection, services: Vec<String>) -> Result<()> {
     app.conn
         .sender
         .send(Message::Command(
-            pom_server::server::ServerCommand::Shutdown,
+            cdi_server::server::ServerCommand::Shutdown,
         ))
         .await?;
 
@@ -122,7 +119,7 @@ impl App {
         &mut self,
         terminal: &mut Terminal<CrosstermBackend<std::io::StdoutLock<'_>>>,
     ) -> Result<()> {
-        let (mut evt_rx, _signals) = (PomEvent::take(), Signals::start()?);
+        let (mut evt_rx, _signals) = (TuiEvent::take(), Signals::start()?);
         self.render(terminal)?;
 
         let mut events_proccessed = 0;
@@ -153,14 +150,14 @@ impl App {
     }
 
     #[inline]
-    fn disptach(&mut self, event: PomEvent) -> Result<()> {
+    fn disptach(&mut self, event: TuiEvent) -> Result<()> {
         match event {
-            PomEvent::Key(key) => self.dispatch_key(key),
-            PomEvent::ProcessMessage { process_id, line } => {
-                let tab = &mut self.process_tab_group.tabs[process_id];
-                tab.data.push(line.clone());
-            }
-            _ => {} // PomEvent::Render => self.render(sel)
+            TuiEvent::Key(key) => self.dispatch_key(key),
+            // TuiEvent::ProcessMessage { process_id, line } => {
+            //     let tab = &mut self.process_tab_group.tabs[process_id];
+            //     tab.data.push(line.clone());
+            // }
+            _ => {} // TuiEvent::Render => self.render(sel)
         }
 
         Ok(())
@@ -200,7 +197,7 @@ impl App {
 
     pub fn quit(&mut self) {
         self.state = AppState::Quitting;
-        PomEvent::Quit.emit();
+        TuiEvent::Quit.emit();
     }
 
     pub fn next_tab(&mut self) {

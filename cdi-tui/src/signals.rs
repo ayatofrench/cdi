@@ -6,7 +6,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 
-use pom_shared::event::Event;
+use cdi_shared::event::Event;
 
 pub(super) struct Signals {
     tx: mpsc::UnboundedSender<(bool, Option<oneshot::Sender<()>>)>,

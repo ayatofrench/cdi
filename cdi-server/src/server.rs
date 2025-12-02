@@ -1,6 +1,7 @@
 use anyhow;
-use pom_config::Service;
-// use pom_shared::event::Event;
+use cdi_config::Service;
+use cdi_shared::log::ProcessInfo;
+// use cdi_shared::event::Event;
 // use std::process::Stdio;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -189,7 +190,7 @@ pub enum Message {
 //     }
 // }
 
-pub fn serve(services: Vec<Service>) -> anyhow::Result<Connection> {
+pub fn serve(services: Vec<ProcessInfo>) -> anyhow::Result<Connection> {
     let (server_sender, client_receiver) = mpsc::channel::<Message>(100);
     let (client_sender, server_receiver) = mpsc::channel::<Message>(1);
 

@@ -1,10 +1,10 @@
 [package]
-name = "pom-shared"
+name = "cdi-shared"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# pom-server.path = "../pom-server"
+# cdi-server.path = "../cdi-server"
 
 ansi-to-tui.workspace = true
 anyhow.workspace = true

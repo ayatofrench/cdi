@@ -1,5 +1,5 @@
 [workspace]
-memebers = ["pom*"]
+memebers = ["cdi*"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -17,15 +17,15 @@ tokio = { version = "1.45.0", features = [ "full" ] }
 libc = "0.2.172"
 
 [package]
-name = "pom"
+name = "cdi"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pom-tui.path = "./pom-tui"
-pom-server.path = "./pom-server"
-pom-config.path = "./pom-config/"
-pom-shared.path = "./pom-shared/"
+cdi-tui.path = "./cdi-tui"
+cdi-server.path = "./cdi-server"
+cdi-config.path = "./cdi-config/"
+cdi-shared.path = "./cdi-shared/"
 
 anyhow.workspace = true
 clap.workspace = true

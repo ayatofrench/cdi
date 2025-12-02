@@ -2,8 +2,8 @@ use std::process::Stdio;
 
 use anyhow::Result;
 use libc::pid_t;
-use pom_config::Service;
-use pom_shared::event::Event;
+use cdi_config::Service;
+use cdi_shared::{event::{store::StoreEvent, ui::TuiEvent}, log::ProcessInfo};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, Command},
@@ -19,22 +19,19 @@ use crate::{
 };
 
 pub(super) struct Process {
-    id: usize,
-    opts: Service,
+    info: ProcessInfo
     sender: mpsc::Sender<Message>,
     conn: Connection,
 }
 
 impl Process {
     pub fn start(
-        process_id: usize,
-        service: Service,
+        process_info: ProcessInfo,
         sender: mpsc::Sender<Message>,
         conn: Connection,
     ) -> Result<JoinHandle<()>> {
         let process = Self {
-            id: process_id,
-            opts: service,
+            info: process_info,
             sender,
             conn,
         };
@@ -44,7 +41,7 @@ impl Process {
     }
 
     async fn run(mut self) {
-        if let Some((cmd, args)) = utils::split_command_into_parts(&self.opts.cmd) {
+        if let Some((cmd, args)) = utils::split_command_into_parts(&self.info.command) {
             let mut command = Command::new(cmd.clone());
 
             command
@@ -54,7 +51,7 @@ impl Process {
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
 
-            if let Some(cwd) = self.opts.cwd {
+            if let Some(cwd) = self.info.cwd {
                 let canonical = std::fs::canonicalize(cwd).unwrap();
                 command.current_dir(canonical);
             }
@@ -75,9 +72,10 @@ impl Process {
 
             tokio::spawn(async move {
                 while let Ok(Some(line)) = stdout_reader.next_line().await {
-                    Event::ProcessMessage {
-                        process_id: self.id,
-                        line,
+                    StoreEvent::AppendLog {
+                        process_id: self.info.id,
+                        content: line,
+                        stream: cdi_shared::log::Stream::Stdout,
                     }
                     .emit();
                 }
@@ -85,9 +83,10 @@ impl Process {
 
             tokio::spawn(async move {
                 while let Ok(Some(line)) = stderr_reader.next_line().await {
-                    Event::ProcessMessage {
-                        process_id: self.id,
-                        line,
+                    StoreEvent::AppendLog {
+                        process_id: self.info.id,
+                        content: line,
+                        stream: cdi_shared::log::Stream::Stderr,
                     }
                     .emit();
                 }
@@ -119,14 +118,13 @@ impl Process {
                         match result {
                             Ok(status) => {
                                 let exit_msg = format!("Process {} exited with status: {}", cmd, status);
-                                Event::ProcessMessage {process_id: self.id, line: exit_msg.to_string()}.emit();
+                                StoreEvent::AppendLog {process_id: self.info.id, content: exit_msg.to_string(), stream: cdi_shared::log::Stream::Stdout,}.emit();
 
                                 return;
                             },
                             Err(_e) => todo!(),
                         }
                     }
-
                 }
             }
         }

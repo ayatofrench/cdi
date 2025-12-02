@@ -168,6 +168,76 @@ dependencies = [
 ]
 
 [[package]]
+name = "cdi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cdi-config",
+ "cdi-server",
+ "cdi-shared",
+ "cdi-tui",
+ "clap",
+ "miette",
+ "strum 0.27.1",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "cdi-config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "knus",
+ "miette",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "cdi-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cdi-config",
+ "cdi-shared",
+ "libc",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "cdi-shared"
+version = "0.1.0"
+dependencies = [
+ "ansi-to-tui",
+ "anyhow",
+ "clap",
+ "crossterm 0.29.0",
+ "futures",
+ "ratatui",
+ "strum 0.27.1",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "cdi-tui"
+version = "0.1.0"
+dependencies = [
+ "ansi-to-tui",
+ "anyhow",
+ "cdi-server",
+ "cdi-shared",
+ "clap",
+ "crossterm 0.29.0",
+ "futures",
+ "ratatui",
+ "strum 0.27.1",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -778,76 +848,6 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
-
-[[package]]
-name = "pom"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "miette",
- "pom-config",
- "pom-server",
- "pom-shared",
- "pom-tui",
- "strum 0.27.1",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
-name = "pom-config"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "knus",
- "miette",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "pom-server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "libc",
- "pom-config",
- "pom-shared",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
-name = "pom-shared"
-version = "0.1.0"
-dependencies = [
- "ansi-to-tui",
- "anyhow",
- "clap",
- "crossterm 0.29.0",
- "futures",
- "ratatui",
- "strum 0.27.1",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
-name = "pom-tui"
-version = "0.1.0"
-dependencies = [
- "ansi-to-tui",
- "anyhow",
- "clap",
- "crossterm 0.29.0",
- "futures",
- "pom-server",
- "pom-shared",
- "ratatui",
- "strum 0.27.1",
- "thiserror 2.0.12",
- "tokio",
-]
 
 [[package]]
 name = "proc-macro-error-attr2"

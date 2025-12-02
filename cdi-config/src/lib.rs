@@ -32,7 +32,7 @@ impl Config {
         let config = Self::parse(
             path.file_name()
                 .and_then(OsStr::to_str)
-                .unwrap_or(".pom.kdl"),
+                .unwrap_or(".cdi.kdl"),
             &contents,
         )
         .context("error parsing")?;
