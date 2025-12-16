@@ -1,3 +1,4 @@
+mod block;
 mod memory;
 
 use cdi_shared::log::{LogLine, ProcessInfo, ProcessStatus, Stream};
